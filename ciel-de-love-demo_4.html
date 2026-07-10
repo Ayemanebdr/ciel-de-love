@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le Ciel de Love</title>
+
+<!--
+  ================================================================
+  COMMENT PERSONNALISER CE FICHIER
+  ================================================================
+  1. Photos : dans chaque <button class="star-card"> (section
+     #constellation), ajoute un data-photo si tu veux, et dans le JS
+     (fonction openModal) remplace #modalPhoto par une vraie <img>.
+  2. Mascotte : remplace le contenu de #mascot-svg par ton illustration.
+  3. Textes des étoiles : modifie les attributs data-text.
+  4. La lettre (section #lettre) : personnalise .letter-body.
+  ================================================================
+-->
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Work+Sans:wght@300;400;500;600&family=Caveat:wght@500;600&display=swap');
+
+  :root{
+    --ink:#221a2c;
+    --ink-2:#3a2a4d;
+    --blush:#ffcfe6;
+    --blush-soft:#ffeef6;
+    --sky:#bfe0ff;
+    --sky-soft:#eaf6ff;
+    --cream:#fff8f2;
+    --gold:#ffe1a3;
+    --text-dark:#2a2038;
+    --font-display:'Fraunces', serif;
+    --font-body:'Work Sans', sans-serif;
+    --font-accent:'Caveat', cursive;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; font-family:var(--font-body); color:var(--cream); background:var(--ink); overflow-x:hidden; }
+
+  .sky-layer{ position:fixed; inset:0; z-index:-3; pointer-events:none; transition:opacity 0.4s linear; }
+  .sky-night{ background:radial-gradient(ellipse at 50% -10%, #3a2a4d 0%, #221a2c 55%, #150f1c 100%); opacity:1; }
+  .sky-dawn{ background:linear-gradient(180deg, #4a2f52 0%, #7a4a72 35%, #d98aa0 65%, #ffcfe6 100%); opacity:0; }
+  .sky-day{ background:linear-gradient(180deg, #bfe0ff 0%, #eaf6ff 45%, #fff8f2 100%); opacity:0; }
+
+  .stars{ position:fixed; inset:0; z-index:-2; pointer-events:none; transition:opacity 0.6s linear; }
+  .star{ position:absolute; width:2px; height:2px; background:var(--cream); border-radius:50%; animation:twinkle 3.5s ease-in-out infinite; }
+  @keyframes twinkle{ 0%,100%{ opacity:0.15; } 50%{ opacity:1; } }
+
+  section{ position:relative; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6rem 1.5rem; text-align:center; }
+
+  .eyebrow{ font-family:var(--font-body); font-size:0.78rem; letter-spacing:0.28em; text-transform:uppercase; opacity:0.65; margin-bottom:1rem; }
+
+  h1,h2{ font-family:var(--font-display); font-weight:400; margin:0 0 1rem 0; line-height:1.08; }
+  h1{ font-size:clamp(2.6rem, 8vw, 5.2rem); }
+  h2{ font-size:clamp(1.9rem, 5vw, 3rem); }
+
+  p{ font-size:1.05rem; line-height:1.7; max-width:38rem; margin:0 auto; font-weight:300; }
+
+  .accent-name{ font-family:var(--font-accent); font-size:1.4em; color:var(--blush); }
+
+  .dark-text p, .dark-text h1, .dark-text h2{ color:var(--cream); }
+  .light-text{ color:var(--text-dark); }
+  .light-text .eyebrow{ opacity:0.55; }
+
+  .hero-kicker{ font-family:var(--font-display); font-style:italic; font-size:clamp(1.05rem, 2.6vw, 1.3rem); opacity:0.85; margin-bottom:1.4rem; }
+
+  .reveal{ opacity:0; transform:translateY(24px); transition:opacity 0.9s ease, transform 0.9s ease; }
+  .reveal.in-view{ opacity:1; transform:translateY(0); }
+
+  #hero{ padding-top:8rem; }
+  .hero-sub{ margin-top:1.4rem; opacity:0.8; }
+  .scroll-hint{ position:absolute; bottom:2.6rem; left:50%; transform:translateX(-50%); font-size:0.75rem; letter-spacing:0.2em; text-transform:uppercase; opacity:0.55; display:flex; flex-direction:column; align-items:center; gap:0.6rem; }
+  .scroll-hint::after{ content:""; width:1px; height:34px; background:linear-gradient(var(--cream), transparent); animation:scrolldown 1.8s ease-in-out infinite; }
+  @keyframes scrolldown{ 0%{ transform:scaleY(0.3); opacity:0.2; } 50%{ transform:scaleY(1); opacity:0.9; } 100%{ transform:scaleY(0.3); opacity:0.2; } }
+
+  .confetti-piece{ position:fixed; top:-16px; z-index:60; border-radius:2px; pointer-events:none; animation:confettiFall linear forwards; }
+  @keyframes confettiFall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(78vh) rotate(340deg); opacity:0; }
+  }
+
+  .music-toggle{
+    position:fixed; left:1.4rem; top:1.4rem; z-index:25;
+    width:44px; height:44px; border-radius:50%;
+    border:1px solid rgba(255,255,255,0.35);
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(6px);
+    color:var(--cream); font-size:1.1rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition:background 0.3s ease, transform 0.3s ease;
+  }
+  .music-toggle:hover{ background:rgba(255,255,255,0.18); transform:scale(1.05); }
+  .music-toggle[aria-pressed="true"]{ background:rgba(255,207,230,0.35); }
+
+  .mascot{ position:fixed; right:1.4rem; bottom:1.4rem; z-index:20; display:flex; align-items:flex-end; gap:0.7rem; pointer-events:none; }
+  #mascot-svg{ width:64px; height:64px; filter:drop-shadow(0 6px 16px rgba(0,0,0,0.35)); animation:bob 3.4s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-8px); } }
+  .mascot-bubble{ background:var(--cream); color:var(--text-dark); font-family:var(--font-body); font-size:0.82rem; font-weight:500; padding:0.6rem 0.9rem; border-radius:14px 14px 3px 14px; max-width:190px; box-shadow:0 8px 20px rgba(0,0,0,0.25); opacity:0; transform:translateY(8px) scale(0.95); transition:opacity 0.4s ease, transform 0.4s ease; margin-bottom:6px; }
+  .mascot-bubble.show{ opacity:1; transform:translateY(0) scale(1); }
+
+  #constellation{ padding-top:5rem; }
+  .constellation-grid{ margin-top:3.2rem; display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:1.4rem; max-width:56rem; width:100%; }
+  .star-card{
+    height:150px; cursor:pointer; border-radius:16px;
+    background:linear-gradient(160deg, rgba(191,224,255,0.12), rgba(255,207,230,0.10));
+    border:1px solid rgba(255,255,255,0.18);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem;
+    transition:transform 0.35s ease, background 0.35s ease, box-shadow 0.35s ease;
+  }
+  .star-card:hover, .star-card:focus-visible{
+    transform:translateY(-5px);
+    background:linear-gradient(160deg, rgba(191,224,255,0.22), rgba(255,207,230,0.2));
+    box-shadow:0 14px 28px rgba(0,0,0,0.3);
+    outline:none;
+  }
+  .star-card .dot{ width:10px; height:10px; border-radius:50%; background:var(--gold); box-shadow:0 0 14px 4px rgba(255,225,163,0.55); margin-bottom:0.8rem; }
+  .star-card span{ font-family:var(--font-display); font-size:1.05rem; opacity:0.9; }
+  .constellation-hint{ margin-top:1.6rem; font-size:0.78rem; opacity:0.55; letter-spacing:0.05em; }
+  .all-found{
+    margin-top:1.8rem;
+    font-family:var(--font-accent);
+    font-size:1.5rem;
+    color:var(--blush);
+    opacity:0;
+    max-height:0;
+    overflow:hidden;
+    transition:opacity 1s ease, max-height 1s ease, margin 1s ease;
+  }
+  .all-found.show{ opacity:1; max-height:120px; margin-top:1.8rem; }
+
+  .modal-overlay{
+    position:fixed; inset:0; z-index:50; background:rgba(15,10,20,0.7); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:1.5rem;
+    opacity:0; pointer-events:none; transition:opacity 0.35s ease;
+  }
+  .modal-overlay.open{ opacity:1; pointer-events:auto; }
+  .modal-box{
+    background:var(--cream); color:var(--text-dark); max-width:640px; width:100%; border-radius:20px; overflow:hidden;
+    display:grid; grid-template-columns:1fr 1fr; box-shadow:0 30px 60px rgba(0,0,0,0.45);
+    transform:scale(0.94) translateY(10px); transition:transform 0.35s ease;
+  }
+  .modal-overlay.open .modal-box{ transform:scale(1) translateY(0); }
+  .modal-photo-placeholder{
+    min-height:220px; background:linear-gradient(160deg, rgba(191,224,255,0.5), rgba(255,207,230,0.55));
+    display:flex; align-items:center; justify-content:center; text-align:center; font-size:0.8rem; color:rgba(42,32,56,0.55); padding:1rem;
+  }
+  .modal-content{ padding:2rem 1.8rem; text-align:left; position:relative; display:flex; flex-direction:column; justify-content:center; }
+  .modal-content h3{ font-family:var(--font-display); font-size:1.5rem; margin:0 0 0.9rem 0; }
+  .modal-content p{ font-size:0.95rem; line-height:1.7; margin:0; text-align:left; max-width:none; }
+  .modal-close{
+    position:absolute; top:0.8rem; right:0.9rem; width:30px; height:30px; border-radius:50%;
+    border:none; background:rgba(42,32,56,0.08); font-size:1rem; cursor:pointer; color:var(--text-dark);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .modal-close:hover{ background:rgba(42,32,56,0.16); }
+  @media (max-width:560px){ .modal-box{ grid-template-columns:1fr; } .modal-photo-placeholder{ min-height:160px; } }
+
+  #lettre .envelope-wrap{ margin-top:2.6rem; display:flex; flex-direction:column; align-items:center; }
+  .envelope-btn{
+    background:none; border:none; cursor:pointer; padding:0.6rem;
+    display:flex; flex-direction:column; align-items:center; gap:0.9rem;
+    transition:transform 0.3s ease;
+  }
+  .envelope-btn:hover{ transform:translateY(-4px) scale(1.03); }
+  .envelope-btn svg{ width:132px; height:98px; filter:drop-shadow(0 12px 24px rgba(42,32,56,0.22)); }
+  .envelope-label{ font-size:0.85rem; letter-spacing:0.08em; opacity:0.65; }
+
+  .letter-card{
+    margin-top:1.6rem; max-width:34rem; width:100%; background:var(--cream); border-radius:18px;
+    padding:2.4rem 2rem; box-shadow:0 20px 46px rgba(42,32,56,0.16); text-align:left; position:relative;
+    opacity:0; max-height:0; overflow:hidden; padding-top:0; padding-bottom:0;
+    transition:opacity 0.6s ease, max-height 0.7s ease, padding 0.7s ease, margin 0.7s ease;
+    pointer-events:none;
+  }
+  .letter-card.show{
+    opacity:1; max-height:900px; padding-top:2.4rem; padding-bottom:2.4rem; pointer-events:auto;
+  }
+  .letter-body{ font-family:var(--font-display); font-size:1.08rem; line-height:1.85; color:var(--text-dark); white-space:pre-line; }
+  .letter-sign{ margin-top:1.4rem; font-family:var(--font-accent); font-size:1.4rem; }
+  .letter-close{
+    position:absolute; top:0.9rem; right:1rem; width:30px; height:30px; border-radius:50%;
+    border:none; background:rgba(42,32,56,0.08); font-size:1rem; cursor:pointer; color:var(--text-dark);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .letter-close:hover{ background:rgba(42,32,56,0.16); }
+
+  #lumiere{ background:transparent; }
+  .gift-icon{ width:54px; height:54px; margin-bottom:1.6rem; animation:glow 2.6s ease-in-out infinite; }
+  @keyframes glow{ 0%,100%{ filter:drop-shadow(0 0 6px rgba(255,207,230,0.4)); } 50%{ filter:drop-shadow(0 0 18px rgba(255,207,230,0.85)); } }
+  .signature{ margin-top:2.4rem; font-family:var(--font-accent); font-size:1.6rem; color:var(--text-dark); opacity:0.85; }
+
+  footer{ text-align:center; padding:2rem 1rem 3rem; font-size:0.72rem; color:rgba(42,32,56,0.45); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.2s !important; }
+    html{ scroll-behavior:auto; }
+    .confetti-piece{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sky-layer sky-night"></div>
+<div class="sky-layer sky-dawn" id="skyDawn"></div>
+<div class="sky-layer sky-day" id="skyDay"></div>
+<div class="stars" id="starsLayer"></div>
+
+<button class="music-toggle" id="musicToggle" aria-pressed="false" aria-label="Couper ou activer la musique">🎵</button>
+
+<div class="mascot">
+  <div class="mascot-bubble" id="mascotBubble">Salut ✨ je t'accompagne dans ce petit voyage.</div>
+  <img id="mascot-svg" src="https://res.cloudinary.com/drqf1yosc/image/upload/v1783124354/IMG_2896_veeuyz.png" alt="Mascotte" style="border-radius:50%;object-fit:cover;background:#ffcfe6;">
+</div>
+
+<section id="hero" class="dark-text">
+  <div class="eyebrow reveal">Aujourd'hui, 11 juillet</div>
+  <p class="hero-kicker reveal">Tu as 24 ans, dans cette vie qui est la tienne.</p>
+  <h1 class="reveal">Bon anniversaire,<br><span class="accent-name">ma princesse Love</span></h1>
+  <p class="hero-sub reveal">Scrolle doucement — on a un petit chemin à faire ensemble, de la nuit jusqu'à l'aube.</p>
+  <div class="scroll-hint">Descendre</div>
+</section>
+
+<section id="constellation" class="dark-text" data-mascot="Chaque étoile, c'est un peu de toi. Clique dessus 👆">
+  <div class="eyebrow reveal">Depuis plus de quatre ans</div>
+  <h2 class="reveal">Ce que je vois, quand je te regarde</h2>
+  <p class="reveal">Tout ce qui est écrit ici, je te l'ai sûrement déjà dit, plusieurs fois, de plusieurs façons. Mais les paroles s'envolent, et toi, tu m'as toujours dit que tu aimais pouvoir relire, te rappeler. Alors cette fois, c'est écrit. Ça reste. Touche les étoiles, une par une.</p>
+
+  <div class="constellation-grid reveal">
+    <button class="star-card" data-title="Douceur" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783124482/EB5CEB88-DBB5-4DBE-A06A-76FB176F56C3_tqezx9.jpg" data-text="Ta douceur, je la vois d'abord dans ton regard — il suffit d'un instant pour la sentir. Mais elle est surtout dans ta façon de m'écouter : même quand je te dis quelque chose que tu n'as pas forcément envie d'entendre, tu m'écoutes avec une patience qui me touche à chaque fois. Cette douceur-là te rend encore plus belle à mes yeux. J'ai de la chance de t'avoir.">
+      <div class="dot"></div><span>Douceur</span>
+    </button>
+    <button class="star-card" data-title="Force" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783124478/21ceb8b2-7a0a-42da-9927-1b9b863a342e_rn82qs.jpg" data-text="Je sais que tu n'aimes pas quand je t'appelle « femme forte » — tu me dis que ça donne l'impression que ta vie n'est qu'une suite de combats. Ce n'est pas ce que je veux dire. En plus de quatre ans à tes côtés, je t'ai vue traverser des choses difficiles et toujours te relever. Je suis fier de toi pour ça. Et je serai toujours là pour ajouter ma force à la tienne, pour que tu n'aies jamais à porter ça seule.">
+      <div class="dot"></div><span>Force</span>
+    </button>
+    <button class="star-card" data-title="Rire" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783124477/04ccc615-9d16-452a-90f1-1e1df1e3042_axtlxk.jpg" data-text="Ton sourire, franchement, je ne vais pas le cacher : c'est l'un des plus beaux que je connaisse. Et quand tu ris pour de vrai, ce rire qui vient de nulle part et qui change toute une conversation, je me sens chanceux. Te voir heureuse, c'est un peu ma définition du bonheur aussi.">
+      <div class="dot"></div><span>Rire</span>
+    </button>
+    <button class="star-card" data-title="Regard" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783124481/08902A52-BF5B-4313-BEAE-726F66FC5654_h4agfl.jpg" data-text="Ton regard a quelque chose de sûr, de confiant, qui me désarme à chaque fois. Il suffit que tu me regardes comme ça pour que je sois complètement sous le charme. Je pourrais te contempler toute une journée sans me lasser.">
+      <div class="dot"></div><span>Regard</span>
+    </button>
+    <button class="star-card" data-title="Présence" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783125315/IMG_6767_qbnluz.png" data-text="Je ne suis pas quelqu'un qui se plaint souvent, ni qui partage facilement ce qui ne va pas. Mais dans les rares moments où j'en ai besoin, tu es là, tu m'écoutes avec cette même douceur, et ça suffit à tout remettre en place. Ta présence, même à des milliers de kilomètres d'ici jusqu'à Ottawa, je la sens.">
+      <div class="dot"></div><span>Présence</span>
+    </button>
+    <button class="star-card" data-title="Frisson" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783125316/IMG_8107_ow2tan.png" data-text="Celle-là, je la garde un peu pour moi... Disons juste que ta silhouette, tes jambes interminables, cette allure que tu as sans même y penser, ça me fait complètement perdre le fil. Et tes lèvres — je pourrais t'embrasser pendant des heures sans jamais m'en lasser. Tu es sexy, et je crois que tu le sais très bien.">
+      <div class="dot"></div><span>Frisson</span>
+    </button>
+    <button class="star-card" data-title="Nous" data-photo="https://res.cloudinary.com/drqf1yosc/image/upload/v1783124965/t%C3%A9l%C3%A9chargement_65_fbtrqq.jpg" data-text="S'il y a une chose que je nous souhaite, c'est qu'on soit bientôt réunis pour de bon, et qu'on puisse construire tout ce qu'on s'est promis. Je t'aime, et j'ai hâte de voir tout ce qu'on va encore vivre et partager ensemble.">
+      <div class="dot"></div><span>Nous</span>
+    </button>
+  </div>
+  <div class="constellation-hint reveal">touche les étoiles ✦</div>
+  <p class="all-found" id="allFound">Tu les as toutes trouvées.<br>Un peu comme moi, un jour, je t'ai trouvée toi.</p>
+</section>
+
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box">
+    <div class="modal-photo-placeholder" id="modalPhoto"><span id="modalPhotoFallback">📷<br>Une photo d'elle ira ici</span></div>
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose" aria-label="Fermer">✕</button>
+      <h3 id="modalTitle"></h3>
+      <p id="modalText"></p>
+    </div>
+  </div>
+</div>
+
+<section id="lettre" class="light-text" data-mascot="Une lettre t'attend, juste ici 💌">
+  <div class="eyebrow reveal">Une lettre, juste pour toi</div>
+  <h2 class="reveal">Ouvre-la quand tu es prête</h2>
+  <p class="reveal">Il y a des mots que je préfère t'écrire plutôt que te les dire vite fait. Prends ton temps — tu peux l'ouvrir et la refermer autant de fois que tu veux.</p>
+
+  <div class="envelope-wrap reveal" id="envelopeWrap">
+    <button class="envelope-btn" id="envelopeBtn" aria-label="Ouvrir ou refermer la lettre">
+      <svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="96" height="66" rx="6" fill="#ffeef6" stroke="#2a2038" stroke-width="1.4"/>
+        <path d="M4 6 L50 42 L96 6" fill="none" stroke="#2a2038" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="50" cy="34" r="6" fill="#ffcfe6" stroke="#2a2038" stroke-width="1"/>
+      </svg>
+      <span class="envelope-label" id="envelopeLabel">toucher pour ouvrir</span>
+    </button>
+
+    <div class="letter-card" id="letterCard">
+      <button class="letter-close" id="letterClose" aria-label="Refermer la lettre">✕</button>
+      <div class="letter-body">Ma Love,
+
+En ce jour si spécial, j'ai simplement envie de te dire merci. Merci pour tout ce que tu représentes pour moi depuis que je t'ai connue en 2022, pour ta bienveillance constante, ta douceur, ta tendresse.
+
+Je te souhaite une année remplie de tout ce que tu mérites : de la santé, de la réussite dans tout ce que tu entreprends, du bonheur au quotidien, et la force de réaliser chacun de tes projets — personnels, professionnels, de vie.
+
+Je suis fier de la femme que tu es et de tout ce que tu accomplis, jour après jour. Et je suis fier aussi de l'homme que tu me permets d'être à tes côtés.
+
+Je remercie Dieu de nous avoir permis de nous rencontrer, et je Lui demande de continuer à t'accompagner et à t'aider dans tout ce que tu entreprends.
+
+Sache que je serai toujours à l'écoute, attentionné et présent pour toi, où que je sois.
+
+Bon anniversaire, ma princesse. Je t'aime de tout mon cœur.</div>
+      <div class="letter-sign">Ton amoureux, Ayemane</div>
+    </div>
+  </div>
+</section>
+
+<section id="lumiere" class="light-text" data-mascot="Je t'aime. Tout ça, je l'ai fait avec amour — ton vrai cadeau arrive en décembre 🎁💗">
+  <div class="eyebrow reveal">Plein jour</div>
+  <svg class="gift-icon reveal" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="8" width="18" height="13" rx="1.5" stroke="#2a2038" stroke-width="1.4"/>
+    <path d="M3 12H21" stroke="#2a2038" stroke-width="1.4"/>
+    <path d="M12 8V21" stroke="#2a2038" stroke-width="1.4"/>
+    <path d="M12 8C12 8 9 8 8 6.5C7 5 9 3.5 10 4.5C11 5.5 12 8 12 8Z" stroke="#2a2038" stroke-width="1.4"/>
+    <path d="M12 8C12 8 15 8 16 6.5C17 5 15 3.5 14 4.5C13 5.5 12 8 12 8Z" stroke="#2a2038" stroke-width="1.4"/>
+  </svg>
+  <h2 class="reveal">Ce n'est qu'un début</h2>
+  <p class="reveal">Ce petit voyage n'est qu'un avant-goût. Le vrai cadeau prend un peu plus de temps à te rejoindre — mais il arrivera, en décembre, en main propre.<br>D'ici là, garde ce ciel.</p>
+  <div class="signature reveal">à très vite — Ayemane</div>
+</section>
+
+<footer>Fait avec beaucoup de patience et un peu de code, pour ma princesse Love · 24 ans</footer>
+
+<script>
+  const starsLayer = document.getElementById('starsLayer');
+  const STAR_COUNT = 90;
+  for(let i=0;i<STAR_COUNT;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random()*100 + 'vw';
+    s.style.top = Math.random()*100 + 'vh';
+    s.style.animationDelay = (Math.random()*3.5) + 's';
+    const size = Math.random()*1.6 + 1;
+    s.style.width = size + 'px';
+    s.style.height = size + 'px';
+    starsLayer.appendChild(s);
+  }
+
+  const skyDawn = document.getElementById('skyDawn');
+  const skyDay = document.getElementById('skyDay');
+  function onScroll(){
+    const scrollTop = window.scrollY;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const frac = max > 0 ? Math.min(Math.max(scrollTop / max, 0), 1) : 0;
+    const dawnOpacity = frac < 0.75 ? Math.min(frac / 0.5, 1) : Math.max(1 - (frac-0.75)/0.25, 0);
+    const dayOpacity = frac > 0.55 ? Math.min((frac-0.55)/0.4, 1) : 0;
+    skyDawn.style.opacity = dawnOpacity;
+    skyDay.style.opacity = dayOpacity;
+    starsLayer.style.opacity = Math.max(1 - frac*1.4, 0);
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  const revealEls = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{ if(entry.isIntersecting){ entry.target.classList.add('in-view'); } });
+  }, {threshold:0.2});
+  revealEls.forEach(el=>revealObserver.observe(el));
+
+  const mascotBubble = document.getElementById('mascotBubble');
+  const mascotSections = document.querySelectorAll('[data-mascot]');
+  const mascotObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        mascotBubble.textContent = entry.target.getAttribute('data-mascot');
+        mascotBubble.classList.add('show');
+      }
+    });
+  }, {threshold:0, rootMargin:'-50% 0px -50% 0px'});
+  mascotSections.forEach(el=>mascotObserver.observe(el));
+
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalClose = document.getElementById('modalClose');
+  let lastFocused = null;
+
+  const modalPhoto = document.getElementById('modalPhoto');
+
+  function openModal(title, text, photoUrl){
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    if(photoUrl){
+      modalPhoto.style.backgroundImage = 'url("' + photoUrl + '")';
+      modalPhoto.style.backgroundSize = 'cover';
+      modalPhoto.style.backgroundPosition = 'center';
+      modalPhoto.innerHTML = '';
+    } else {
+      modalPhoto.style.backgroundImage = '';
+      modalPhoto.innerHTML = '<span>📷<br>Une photo d\'elle ira ici</span>';
+    }
+    lastFocused = document.activeElement;
+    modalOverlay.classList.add('open');
+    modalClose.focus();
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(){
+    modalOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+    if(lastFocused) lastFocused.focus();
+  }
+  const totalStars = document.querySelectorAll('.star-card').length;
+  const discoveredStars = new Set();
+  const allFoundMsg = document.getElementById('allFound');
+
+  function sparkleBurst(){
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const grid = document.querySelector('.constellation-grid');
+    const rect = grid.getBoundingClientRect();
+    for(let i=0;i<22;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      const s = Math.random()*4 + 3;
+      p.style.width = s + 'px';
+      p.style.height = s + 'px';
+      p.style.borderRadius = '50%';
+      p.style.top = (rect.top + Math.random()*rect.height) + 'px';
+      p.style.left = (rect.left + Math.random()*rect.width) + 'px';
+      p.style.background = '#ffe1a3';
+      p.style.animationDuration = (1.6 + Math.random()*1.2) + 's';
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(), 3200);
+    }
+  }
+
+  document.querySelectorAll('.star-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const title = card.getAttribute('data-title');
+      openModal(title, card.getAttribute('data-text'), card.getAttribute('data-photo'));
+      discoveredStars.add(title);
+      if(discoveredStars.size === totalStars && !allFoundMsg.classList.contains('show')){
+        setTimeout(()=>{
+          allFoundMsg.classList.add('show');
+          sparkleBurst();
+        }, 500);
+      }
+    });
+  });
+  modalClose.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (e)=>{ if(e.target === modalOverlay) closeModal(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && modalOverlay.classList.contains('open')) closeModal(); });
+
+  const envelopeBtn = document.getElementById('envelopeBtn');
+  const envelopeLabel = document.getElementById('envelopeLabel');
+  const letterCard = document.getElementById('letterCard');
+  const letterClose = document.getElementById('letterClose');
+  let letterOpen = false;
+
+  function setLetter(open){
+    letterOpen = open;
+    letterCard.classList.toggle('show', letterOpen);
+    envelopeLabel.textContent = letterOpen ? 'toucher pour refermer' : 'toucher pour ouvrir';
+  }
+  envelopeBtn.addEventListener('click', ()=> setLetter(!letterOpen));
+  letterClose.addEventListener('click', ()=> setLetter(false));
+
+  function launchConfetti(){
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const colors = ['#ffcfe6', '#bfe0ff', '#ffe1a3', '#fff8f2'];
+    const count = 46;
+    for(let i=0;i<count;i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const w = Math.random()*6 + 6;
+      const h = Math.random()*8 + 10;
+      piece.style.width = w + 'px';
+      piece.style.height = h + 'px';
+      piece.style.left = (Math.random()*100) + 'vw';
+      piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+      piece.style.animationDuration = (2.8 + Math.random()*1.8) + 's';
+      piece.style.animationDelay = (Math.random()*0.6) + 's';
+      document.body.appendChild(piece);
+      setTimeout(()=>piece.remove(), 5500);
+    }
+  }
+  setTimeout(launchConfetti, 350);
+
+  // --- Musique d'ambiance : "Happy Birthday" en synthèse douce, en boucle ---
+  let audioCtx = null;
+  let musicPlaying = false;
+  let musicTimer = null;
+  const musicBtn = document.getElementById('musicToggle');
+
+  const BEAT = 0.5;
+  const melody = [
+    {f:392.00,d:0.75},{f:392.00,d:0.25},{f:440.00,d:1},{f:392.00,d:1},{f:523.25,d:1},{f:493.88,d:2},{f:0,d:0.4},
+    {f:392.00,d:0.75},{f:392.00,d:0.25},{f:440.00,d:1},{f:392.00,d:1},{f:587.33,d:1},{f:523.25,d:2},{f:0,d:0.4},
+    {f:392.00,d:0.75},{f:392.00,d:0.25},{f:783.99,d:1},{f:659.25,d:1},{f:523.25,d:1},{f:493.88,d:1},{f:440.00,d:2},{f:0,d:0.4},
+    {f:698.46,d:0.75},{f:698.46,d:0.25},{f:659.25,d:1},{f:523.25,d:1},{f:587.33,d:1},{f:523.25,d:2},{f:0,d:3}
+  ];
+
+  function ensureContext(){
+    if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    return audioCtx;
+  }
+
+  function playNote(freq, duration){
+    if(freq === 0) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.05);
+  }
+
+  function scheduleMelody(index){
+    if(!musicPlaying) return;
+    const note = melody[index % melody.length];
+    const durSec = note.d * BEAT;
+    playNote(note.f, durSec * 0.9);
+    musicTimer = setTimeout(()=> scheduleMelody(index+1), durSec * 1000);
+  }
+
+  function startMusic(){
+    ensureContext();
+    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+    if(!musicPlaying){
+      musicPlaying = true;
+      musicBtn.setAttribute('aria-pressed', 'true');
+      musicBtn.textContent = '♪';
+      scheduleMelody(0);
+    }
+  }
+  function stopMusic(){
+    musicPlaying = false;
+    musicBtn.setAttribute('aria-pressed', 'false');
+    musicBtn.textContent = '🎵';
+    clearTimeout(musicTimer);
+  }
+
+  musicBtn.addEventListener('click', ()=>{
+    if(musicPlaying){ stopMusic(); } else { startMusic(); }
+  });
+
+  // Tentative de démarrage automatique à l'arrivée sur la page.
+  // Les navigateurs bloquent le son sans interaction : si l'auto-démarrage
+  // est refusé, la musique démarre au tout premier geste (clic, scroll, touche).
+  (function attemptAutoStart(){
+    try{
+      ensureContext();
+      if(audioCtx.state === 'running'){
+        startMusic();
+      } else {
+        const kickoff = ()=>{ startMusic(); };
+        ['pointerdown','touchstart','keydown','wheel'].forEach(evt=>{
+          document.addEventListener(evt, kickoff, {once:true, passive:true});
+        });
+      }
+    }catch(e){ /* Web Audio indisponible, on ignore silencieusement */ }
+  })();
+</script>
+
+</body>
+</html>
